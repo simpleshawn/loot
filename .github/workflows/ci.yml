@@ -135,12 +135,22 @@ jobs:
           cmake --install .
         if: steps.ogdf-cache.outputs.cache-hit != 'true'
 
+      - name: Download libloot snapshot build artifact
+        run: |
+          curl -sSfL \
+            -H 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -H 'Accept: application/vnd.github.v3+json' \
+            -o 'libloot.zip' \
+            https://api.github.com/repos/loot/libloot/actions/artifacts/880047248/zip
+          unzip libloot.zip
+          echo "LIBLOOT_URL=${{ github.workspace }}/$(ls -1 libloot-*.tar.xz)" >> $GITHUB_ENV
+
       - name: Run CMake
         run: |
           mkdir build
           cd build
           export CXX="g++-10" CC="gcc-10"
-          cmake .. -DBOOST_ROOT=${{ steps.boost-metadata.outputs.root }} -DBOOST_LIBRARYDIR=${{ steps.boost-metadata.outputs.librarydir }} -DQt6_ROOT="${{ steps.qt-metadata.outputs.root }}" -DOGDF_ROOT="${{ env.OGDF_INSTALL_PATH }}" -DICU_ROOT="${{ steps.get-icu.outputs.root }}"
+          cmake .. -DBOOST_ROOT=${{ steps.boost-metadata.outputs.root }} -DBOOST_LIBRARYDIR=${{ steps.boost-metadata.outputs.librarydir }} -DQt6_ROOT="${{ steps.qt-metadata.outputs.root }}" -DOGDF_ROOT="${{ env.OGDF_INSTALL_PATH }}" -DICU_ROOT="${{ steps.get-icu.outputs.root }}" -DLIBLOOT_URL="$LIBLOOT_URL"
           make all
 
       - name: Run C++ tests
@@ -312,10 +322,21 @@ jobs:
           aqt install-qt windows desktop ${env:QT_VERSION} win64_msvc2019_64
           echo "root=${{ github.workspace }}/${env:QT_VERSION}/msvc2019_64" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+      - name: Download libloot snapshot build artifact
+        shell: bash
+        run: |
+          curl -sSfL \
+            -H 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -H 'Accept: application/vnd.github.v3+json' \
+            -o 'libloot.zip' \
+            https://api.github.com/repos/loot/libloot/actions/artifacts/880047250/zip
+          unzip libloot.zip
+          echo "LIBLOOT_URL=${{ github.workspace }}/$(ls -1 libloot-*.7z)" | sed 's|\\|/|g' >> $GITHUB_ENV
+
       - name: Run CMake
         run: |
           cd build
-          cmake .. -G "Visual Studio 16 2019" -A x64 -DBOOST_ROOT="${{ steps.boost-metadata.outputs.root }}" -DBOOST_LIBRARYDIR="${{ steps.boost-metadata.outputs.librarydir }}" -DQt6_ROOT="${{ steps.qt-metadata.outputs.root }}" -DOGDF_ROOT="${{ env.OGDF_INSTALL_PATH }}"
+          cmake .. -G "Visual Studio 16 2019" -A x64 -DBOOST_ROOT="${{ steps.boost-metadata.outputs.root }}" -DBOOST_LIBRARYDIR="${{ steps.boost-metadata.outputs.librarydir }}" -DQt6_ROOT="${{ steps.qt-metadata.outputs.root }}" -DOGDF_ROOT="${{ env.OGDF_INSTALL_PATH }}" -DLIBLOOT_URL="${{ env.LIBLOOT_URL }}"
           cmake --build . --config Release
 
       - name: Run C++ tests
